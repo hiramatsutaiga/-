@@ -1,89 +1,112 @@
-# 日報（マネジメントシート）入力支援ツール
+# 日報（マネジメントシート）自動生成ツール
 
-最小構成の CLI ツールです。手入力を中心に、GitHub の commit message と PR タイトルを補助材料として取り込み、日報テキストを生成します。
+GitHub の当日 `commit message` と `PR タイトル` を取得し、日報を自動生成して `output.md` に保存する CLI ツールです。対話入力はありません。
 
-## 最小ディレクトリ構成
+## 構成
 
 ```text
 .
 ├── code.py
+├── run.ps1
 ├── requirements.txt
 ├── README.md
-└── output.md  # 実行時に生成
+└── output.md
 ```
 
-## 実装方針
+## 動作概要
 
-- CLI で動作させる
-- UI は作らない
-- 外部依存は使わない
-- GitHub 連携が未設定でも動くようにする
-- まずは `output.md` に保存する
+- `--date` があればその日付を対象にする
+- 未指定なら実行日のローカル日付を使う
+- GitHub から当日分の commit と PR を取得する
+- 取得できない場合は fallback 文で日報を自動生成する
+- 実行後に `output.md` を保存して終了する
+
+## 必要な環境変数
+
+- `GITHUB_TOKEN`
+- `GITHUB_OWNER`
+- `GITHUB_REPO`
+
+補助的に `GITHUB_REPOSITORY=owner/repo` も利用できます。
 
 ## 実行方法
 
-### PowerShell から起動
+PowerShell:
 
 ```powershell
 .\run.ps1
 ```
 
-### 1. Python を起動
+日付指定:
 
-```bash
-python code.py
+```powershell
+python code.py --date 2026-04-10
 ```
 
-### 2. 日付を指定して実行
+環境変数設定例:
 
-```bash
-python code.py --date 2026-04-08
-```
-
-### 3. GitHub 連携を使う場合
-
-環境変数を設定します。
-
-- `GITHUB_TOKEN`
-- `GITHUB_OWNER`
-- `GITHUB_REPO`
-
-または、GitHub Actions 環境であれば `GITHUB_REPOSITORY` から `owner/repo` を読み取ります。
-
-例:
-
-```bash
-$env:GITHUB_TOKEN="xxxxx"
-$env:GITHUB_OWNER="your-name"
+```powershell
+$env:GITHUB_TOKEN="your-token"
+$env:GITHUB_OWNER="your-owner"
 $env:GITHUB_REPO="your-repo"
-python code.py --date 2026-04-08
+python code.py --date 2026-04-10
 ```
 
-## フォールバック動作
+## 出力フォーマット
 
-以下のどれかが未設定でも実行できます。
+以下の形式で `output.md` に保存します。
 
-- `GITHUB_TOKEN`
-- `GITHUB_OWNER`
-- `GITHUB_REPO`
+```text
+日付：
+今回の目標：
 
-その場合はダミーの commit message と PR タイトルを使って入力を補助します。
+やること：
+出来たこと：
+出来なかったこと：
+その理由：
+達成度：
 
-## 出力
+出欠：
+3限：
+4限：
+5限：
+6限：
 
-- 標準出力に日報テキストを表示
-- `output.md` に保存
+気づき・反省・次回やること：
+```
 
-## できること
+## 自動生成ルール
 
-- 手入力で日報を埋める
-- GitHub の commit message を候補として使う
-- GitHub の PR タイトルを候補として使う
-- GitHub 未設定時も動く
+- 今回の目標:
+  PR タイトル優先。なければ commit message。両方なければ fallback 文。
+- やること:
+  PR タイトル優先。なければ commit message。両方なければ fallback 文。
+- 出来たこと:
+  commit message を箇条書き。なければ fallback 文。
+- 出来なかったこと:
+  固定文を出力。
+- その理由:
+  固定文を出力。
+- 達成度:
+  commit 件数から `0-10` の整数で自動算出。
+- 出欠:
+  `3限` から `6限` まで固定で `出` を出力。
+- 気づき・反省・次回やること:
+  PR タイトル優先。なければ最新 commit message。両方なければ fallback 文。
 
-## 未実装
+## フォールバック
 
-- 達成度の自動計算
+以下のケースでもクラッシュせずに `output.md` を生成します。
+
+- `GITHUB_TOKEN` 未設定
+- `GITHUB_OWNER` / `GITHUB_REPO` 未設定
+- GitHub API エラー
+- 対象日に commit / PR がない
+
+## 非対応
+
 - issue 連携
-- DB 保存
 - Web UI
+- DB
+- 手動入力画面
+- 高度な自然言語要約
